@@ -11,16 +11,16 @@ using UnityEngine;
 
 namespace ServerPrioritizer;
 
-[BepInPlugin(MyPluginInfo.PLUGIN_GUID, MyPluginInfo.PLUGIN_NAME, MyPluginInfo.PLUGIN_VERSION)]
+[BepInPlugin(ModInfo.GUID, ModInfo.NAME, ModInfo.VERSION)]
 [BepInDependency("EasySettings", BepInDependency.DependencyFlags.HardDependency)]
 [BepInProcess("ATLYSS.exe")]
 public class Plugin : BaseUnityPlugin
 {
-    internal static new ManualLogSource Logger;
+    internal static new ManualLogSource Logger = null!;
 
-    private static ConfigEntry<string> _desiredLobbyNameConfig;
-    private static ConfigEntry<string> _lastJoinedLobbyNameConfig;
-    private static string _cachedDesiredLobbyName;
+    private static ConfigEntry<string> _desiredLobbyNameConfig = null!;
+    private static ConfigEntry<string> _lastJoinedLobbyNameConfig = null!;
+    private static string _cachedDesiredLobbyName = null!;
 
     private void Awake()
     {
@@ -80,29 +80,27 @@ public class Plugin : BaseUnityPlugin
                 return;
             }
 
-            GameObject prioritizedLobbyGameObject = null;
+            LobbyDataEntry? prioritizedLobbyEntry = null;
             int prioritizedLobbyIndex = -1;
 
             for (int i = 0; i < __instance._lobbyListEntries.Count; i++)
             {
-                GameObject currentLobbyGo = __instance._lobbyListEntries[i];
-
-                LobbyDataEntry lobEntry = currentLobbyGo.GetComponent<LobbyDataEntry>();
+                LobbyDataEntry lobEntry = __instance._lobbyListEntries[i];
 
                 if (lobEntry != null && lobEntry._lobbyName == _cachedDesiredLobbyName)
                 {
-                    prioritizedLobbyGameObject = currentLobbyGo;
+                    prioritizedLobbyEntry = lobEntry;
                     prioritizedLobbyIndex = i;
                     break;
                 }
             }
 
-            if (prioritizedLobbyGameObject != null && prioritizedLobbyIndex != 0)
+            if (prioritizedLobbyEntry != null && prioritizedLobbyIndex != 0)
             {
                 __instance._lobbyListEntries.RemoveAt(prioritizedLobbyIndex);
-                __instance._lobbyListEntries.Insert(0, prioritizedLobbyGameObject);
-                
-                prioritizedLobbyGameObject.transform.SetSiblingIndex(0);
+                __instance._lobbyListEntries.Insert(0, prioritizedLobbyEntry);
+
+                prioritizedLobbyEntry.transform.SetSiblingIndex(0);
 
                 Logger.LogInfo($"Moved '{_cachedDesiredLobbyName}' to the top of the server list.");
             }
