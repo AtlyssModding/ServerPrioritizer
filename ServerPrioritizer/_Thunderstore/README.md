@@ -1,4 +1,4 @@
-﻿# ServerPrioritizer
+# ServerPrioritizer
 
 A BepInEx plugin for **ATLYSS** that automatically moves your favorite server to the top of the in-game server browser.
 
