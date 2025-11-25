@@ -12,7 +12,7 @@
         <ThunderstorePackageName>ServerPrioritizer</ThunderstorePackageName>
         <ThunderstoreTeamName>AtlyssModding</ThunderstoreTeamName>
         <ThunderstorePackageDescription>A mod for the game ATLYSS that prioritizes a server in the server list.</ThunderstorePackageDescription>
-        <ThunderstoreWebsite>https://github.com/Marioalexsan/ServerPrioritizer</ThunderstoreWebsite>
+        <ThunderstoreWebsite>https://github.com/AtlyssModding/ServerPrioritizer</ThunderstoreWebsite>
     </PropertyGroup>
     <ItemGroup>
         <!-- Thunderstore dependency strings -->
