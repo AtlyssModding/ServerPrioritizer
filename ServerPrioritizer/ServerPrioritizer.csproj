@@ -8,7 +8,7 @@
         <Product>ServerPrioritizer</Product>
 
         <!-- Also set as plugin version and Thunderstore package version -->
-        <Version>0.0.5</Version>
+        <Version>0.0.6</Version>
     </PropertyGroup>
 
     <!-- Generic assembly info. -->

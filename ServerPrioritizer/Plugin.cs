@@ -3,16 +3,15 @@ using BepInEx.Configuration;
 using BepInEx.Logging;
 using HarmonyLib;
 using Steamworks;
-using System.Collections.Generic;
 using System.Reflection;
 using System.Reflection.Emit;
+using Mirror;
 using Nessie.ATLYSS.EasySettings;
-using UnityEngine;
 
 namespace ServerPrioritizer;
 
 [BepInPlugin(ModInfo.GUID, ModInfo.NAME, ModInfo.VERSION)]
-[BepInDependency("EasySettings", BepInDependency.DependencyFlags.HardDependency)]
+[BepInDependency("EasySettings")]
 [BepInProcess("ATLYSS.exe")]
 public class Plugin : BaseUnityPlugin
 {
@@ -47,7 +46,7 @@ public class Plugin : BaseUnityPlugin
 
         Settings.OnInitialized.AddListener(() =>
         {
-            SettingsTab tab = Settings.ModTab;
+            var tab = Settings.ModTab;
             tab.AddHeader("Server Prioritizer");
             tab.AddTextField("Server Name", _desiredLobbyNameConfig, "Server Name");
         });
@@ -63,7 +62,7 @@ public class Plugin : BaseUnityPlugin
         Logger.LogInfo($"Desired server name set to '{_cachedDesiredLobbyName}'");
     }
 
-    [HarmonyPatch(typeof(LobbyListManager), "Iterate_SteamLobbies")]
+    [HarmonyPatch(typeof(LobbyListManager), nameof(LobbyListManager.Iterate_SteamLobbies))]
     public class IterateSteamLobbiesPatch
     {
         public static void Postfix(LobbyListManager __instance)
@@ -107,39 +106,33 @@ public class Plugin : BaseUnityPlugin
         }
     }
 
-    [HarmonyPatch(typeof(SteamLobby), "GetLobbiesList")]
+    [HarmonyPatch(typeof(SteamLobby), nameof(SteamLobby.GetLobbiesList))]
     public static class GetLobbiesListPatch
     {
         public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
         {
-            List<CodeInstruction> codes = new List<CodeInstruction>(instructions);
+            var matcher = new CodeMatcher(instructions);
 
-            MethodInfo targetMethod = AccessTools.Method(typeof(SteamMatchmaking), nameof(SteamMatchmaking.AddRequestLobbyListResultCountFilter));
+            matcher.MatchForward(false,
+                new CodeMatch(x => x.LoadsConstant()),
+                new CodeMatch(x => x.Calls(AccessTools.Method(typeof(SteamMatchmaking), nameof(SteamMatchmaking.AddRequestLobbyListResultCountFilter))))
+            );
 
-            for (int i = 0; i < codes.Count; i++)
-            { 
-                if (codes[i].opcode == OpCodes.Call && codes[i].operand is MethodInfo method && method == targetMethod)
-                {
-                    if (i > 0 && codes[i-1].opcode == OpCodes.Ldc_I4_S && (sbyte)codes[i-1].operand == 60)
-                    {
-                        codes.RemoveAt(i - 1); // removes the filter instruction
-                        codes.RemoveAt(i - 1); // removes the call instruction that calls the filter
-
-                        Logger.LogInfo("Successfully patched out SteamMatchmaking.AddRequestLobbyListResultCountFilter(60).");
-                        i -= 2;
-                    }
-                }
-            }
-
-            return codes;
+            if (!matcher.IsValid)
+                throw new InvalidOperationException($"Couldn't find location to patch in {nameof(GetLobbiesListPatch)}! Please report this to the mod developer!");
+            
+            return matcher.InstructionEnumeration();
         }
     }
 
-    [HarmonyPatch(typeof(ServerInfoObject), "Update")]
+    [HarmonyPatch(typeof(ServerInfoObject), nameof(ServerInfoObject.Update))]
     public static class OnServerInfoObjectUpdatePatch
     {
         static void Postfix(ServerInfoObject __instance)
         {
+            if (NetworkServer.active)
+                return; // Ignore servers hosted by the player themselves
+            
             if (_lastJoinedLobbyNameConfig.Value == __instance._serverName)
                 return;
 
